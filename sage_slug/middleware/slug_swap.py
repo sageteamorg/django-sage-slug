@@ -21,50 +21,28 @@ class OldSlugRedirectMiddleware(MiddlewareMixin):
     been changed. If an old slug is detected, it attempts to find the new slug and
     redirects the user to the updated URL.
 
-    The middleware uses the `SLUG_TYPE_MAPPING` setting to determine the mappings
-    between URL parameter names and their respective content types. If a mapping is found,
-    it updates the URL parameters and performs a redirect based on the new slug information.
-
-    Example of SLUG_TYPE_MAPPING in settings:
-    SLUG_TYPE_MAPPING = {
-        'product_slug': 'product',
-        'category_slug': 'category',
-        'post_slug': 'post',
-        'slug': 'other',
-    }
-
-    The middleware performs the following steps:
-    1. Intercepts 404 responses.
-    2. Retrieves the old slug from the request.
-    3. Uses the mapping defined in SLUG_TYPE_MAPPING to find the new slug.
-    4. Constructs the new URL and redirects the user.
-    5. Logs any errors encountered during the process.
-
-    This helps maintain SEO and user experience by ensuring that outdated links
-    continue to direct users to the correct content.
+    The middleware dynamically retrieves the `SLUG_TYPE_MAPPING` from Django settings
+    to determine the mappings between URL parameter names and their respective content types.
     """
 
     def __init__(self, get_response):
         self.get_response = get_response
         super().__init__(get_response)
+        self.slug_type_mapping = getattr(settings, "SLUG_TYPE_MAPPING", {})
 
     def process_response(self, request, response):
         """
         Processes the response to check for 404 errors and handle old slug redirection.
 
         This method intercepts 404 responses, checks for old slugs in the request,
-        and attempts to find and redirect to the new slug using the SLUG_TYPE_MAPPING
-        settings.
-
-        If the requested URL matches an old slug, the method constructs a new URL
-        with the updated slug and performs a redirect to the new URL.
-
+        and attempts to find and redirect to the new slug using the dynamically loaded
+        SLUG_TYPE_MAPPING from settings.
         """
         if response.status_code == 404:
             try:
                 updated_kwargs = {}
 
-                for slug_name, slug_type in settings.SLUG_TYPE_MAPPING.items():
+                for slug_name, slug_type in self.slug_type_mapping.items():
                     old_slug = request.resolver_match.kwargs.get(slug_name)
                     if old_slug:
                         updated_kwargs[slug_name] = self._get_new_slug(
@@ -121,19 +99,24 @@ class OldSlugRedirectMiddleware(MiddlewareMixin):
         slug. It determines whether to perform a permanent or temporary redirect based
         on the redirect type defined in the SlugSwap model.
 
+        The method dynamically determines which slug to query based on the SLUG_TYPE_MAPPING
+        from settings.
         """
         try:
-            slug_swap = SlugSwap.objects.filter(
-                old_slug=updated_kwargs.get("product_slug")
-                or updated_kwargs.get("post_slug")
-                or updated_kwargs.get("category_slug")
-                or updated_kwargs.get("slug")
-            ).first()
-            if slug_swap:
-                if slug_swap.redirect_type == RedirectType.Primary:
-                    return PermanentRedirect(url)
-                else:
-                    return TemporaryRedirect(url)
+            old_slug = None
+            for slug_name in self.slug_type_mapping.keys():
+                if slug_name in updated_kwargs:
+                    old_slug = updated_kwargs[slug_name]
+                    break
+
+            if old_slug:
+                slug_swap = SlugSwap.objects.filter(old_slug=old_slug).first()
+                if slug_swap:
+                    if slug_swap.redirect_type == RedirectType.Primary:
+                        return PermanentRedirect(url)
+                    else:
+                        return TemporaryRedirect(url)
+
             return TemporaryRedirect(url)
         except Exception as e:
             logger.error(
