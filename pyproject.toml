@@ -1,15 +1,29 @@
-[tool.poetry]
+[project]
 name = "django-sage-slug"
 version = "0.1.0"
 description = ""
-authors = ["MohmdFo <mohammad.fotouhi80@gmail.com>"]
+authors = [
+  { name = "MohmdFo", email = "mohammad.fotouhi80@gmail.com"},
+  { name = "ARYAN-NIKNEZHAD", email = "aryan513966@gmail.com" }
+]
+license = {text = "MIT"}
 readme = "README.md"
+requires-python = ">=3.9"
+
+
+[tool.poetry]
+packages = [
+  { include = "sage_slug" },
+]
+
 
 [tool.poetry.dependencies]
-python = "^3.12"
-django = "^5.1.6"
-
+python = ">=3.9,<4.0"
+django = [
+  { version = ">=4.2,<5.0", python = ">=3.9,<3.10" },
+  { version = ">=4.2,<5.3", python = ">=3.10" },      # Django 4.2 and 5.x for Python 3.10+
+]
 
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
