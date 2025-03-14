@@ -5,6 +5,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from sage_slug.helpers.enums import RedirectType
+from sage_slug.fields import SAGESlugField
 
 
 class SlugSwap(models.Model):
@@ -18,7 +19,7 @@ class SlugSwap(models.Model):
         to the new slug. This allows for automatic redirection from the old URL to the new URL.
     """
 
-    old_slug = models.SlugField(
+    old_slug = SAGESlugField(
         verbose_name=_("Old Slug"),
         max_length=255,
         editable=False,
@@ -31,7 +32,7 @@ class SlugSwap(models.Model):
         db_comment="Stores the old slug value for redirection purposes. Used to map old URLs to new ones.",
     )
 
-    new_slug = models.SlugField(
+    new_slug = SAGESlugField(
         verbose_name=_("New Slug"),
         max_length=255,
         editable=False,
